@@ -7,3 +7,6 @@ type PodController struct {
 func (c *PodController) Get() {
 	c.TplName = "pods.html"
 }
+func (c *PodController) ContainerLog() {
+	c.TplName = "container_log.html"
+}

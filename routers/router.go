@@ -9,4 +9,5 @@ func init() {
 
 	beego.Router("/", &controllers.MainController{})
 	beego.Router("/pods", &controllers.PodController{})
+	beego.Router("/containerLog", &controllers.PodController{}, "*:ContainerLog")
 }
