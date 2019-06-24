@@ -2,12 +2,17 @@
 <html>
 <head>
     <meta charset="utf-8">
-
+    <link rel="stylesheet" href="/static/js/xterm/xterm.css"/>
+    <script src="/static/js/xterm/xterm.js"></script>
+    <style>
+        .xterm-screen {
+            width: 1519px!important;
+            height: 800px!important;
+        }
+    </style>
 </head>
 <body>
-<div id="output"></div>
-<div id="msg_end" style="height:0px; overflow:hidden"></div>
-
+<div id="terminal"  ></div>
 </body>
 
 <script>
@@ -53,6 +58,14 @@
     var podName = getQueryStringByName("podName");
 
 
+    var term = new Terminal({
+        cursorBlink: true,
+        useStyle: true,
+        fontSize: 12,
+    });
+    term.open(document.getElementById('terminal'));
+
+
     var output = document.getElementById("output");
     var ws;
     var print = function (message) {
@@ -66,17 +79,18 @@
 
         ws = new WebSocket("ws://localhost:9999/ns/" + ns + "/podName/" + podName + "/log");
         ws.onopen = function (evt) {
-            print("connected");
+            term.writeln("connected");
         }
         ws.onclose = function (evt) {
-            print("CLOSE");
+            term.writeln("CLOSE");
             ws = null;
         }
         ws.onmessage = function (evt) {
-            print(evt.data);
+            term.writeln(evt.data);
+            term.focus();
         }
         ws.onerror = function (evt) {
-            print("ERROR: " + evt.data);
+            term.writeln("ERROR: " + evt.data);
         }
 
     };
@@ -90,6 +104,42 @@
     };
 
     open();
+    function proposeGeometry(term) {
+        if (!term.element.parentElement) {
+            return null;
+        }
+        var parentElementStyle = window.getComputedStyle(term.element.parentElement);
+        var parentElementHeight = parseInt(parentElementStyle.getPropertyValue('height'));
+        var parentElementWidth = Math.max(0, parseInt(parentElementStyle.getPropertyValue('width')));
+        var elementStyle = window.getComputedStyle(term.element);
+        var elementPadding = {
+            top: parseInt(elementStyle.getPropertyValue('padding-top')),
+            bottom: parseInt(elementStyle.getPropertyValue('padding-bottom')),
+            right: parseInt(elementStyle.getPropertyValue('padding-right')),
+            left: parseInt(elementStyle.getPropertyValue('padding-left'))
+        };
+        var elementPaddingVer = elementPadding.top + elementPadding.bottom;
+        var elementPaddingHor = elementPadding.right + elementPadding.left;
+        var availableHeight = parentElementHeight - elementPaddingVer;
+        var availableWidth = parentElementWidth - elementPaddingHor - term._core.viewport.scrollBarWidth;
+        var geometry = {
+            cols: Math.floor(availableWidth / term._core._renderCoordinator.dimensions.actualCellWidth),
+            rows: Math.floor(availableHeight / term._core._renderCoordinator.dimensions.actualCellHeight)
+        };
+        return geometry;
+    }
+
+    function fit() {
+        var geometry = proposeGeometry(term);
+        if (geometry) {
+            if (term.rows !== geometry.rows || term.cols !== geometry.cols) {
+                term._core._renderCoordinator.clear();
+                term.resize(geometry.cols, geometry.rows);
+            }
+        }
+
+    }
+    fit();
 
 </script>
 </html>

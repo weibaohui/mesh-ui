@@ -2,10 +2,15 @@
 <head>
     <link rel="stylesheet" href="/static/js/xterm/xterm.css"/>
     <script src="/static/js/xterm/xterm.js"></script>
-    <script src="/static/js/xterm/addons/fit/fit.js"></script>
-</head>
+    <style>
+         .xterm-screen {
+            width: 1519px!important;
+            height: 800px!important;
+        }
+    </style>
+ </head>
 <body>
-<div id="terminal"></div>
+<div id="terminal"  ></div>
 <script>
     //获取QueryString的数组
     function getQueryString() {
@@ -52,51 +57,73 @@
 </script>
 
 <script>
-    const DEFAULT_COMMAND = ['/bin/sh', '-c', 'TERM=xterm-256color; export TERM; [ -x /bin/bash ] && ([ -x /usr/bin/script ] && /usr/bin/script -q -c "/bin/bash" /dev/null || exec /bin/bash) || exec /bin/sh'];
-    // Terminal.applyAddon(fit);
-    var term = new Terminal({
+     var term = new Terminal({
         cursorBlink: true,
-        useStyle:    true,
-        fontSize:    12,
+        useStyle: true,
+        fontSize: 12,
     });
-    term.open(document.getElementById('terminal'));
     var ws = new WebSocket("ws://localhost:9999/ns/" + ns + "/podName/" + podName + "/exec");
+    term.open(document.getElementById('terminal'));
     ws.onopen = function (evt) {
+
         term.writeln("connected");
-        ws.send(DEFAULT_COMMAND);
         term.focus();
     };
     ws.onmessage = function (evt) {
-        term.writeln(evt.data);
-        term.scrollToBottom();
+        term.write(evt.data);
     };
     ws.onerror = function (evt) {
         term.writeln("ERROR: " + evt.data);
+        // term.destroy();
     };
     ws.onclose = function (evt) {
         term.writeln("CLOSE");
+        // term.destroy();
     };
-    var command = "";
-    // term.on("keydown", function (evt) {
-    //     if (evt.key == "Enter" || evt.keyCode == 13) {
-    //         console.log(command);
-    //         if (command == "clear") {
-    //             term.clear();
-    //         } else if (command == "") {
-    //
-    //         } else {
-    //             term.writeln("");
-    //             ws.send(command);
-    //         }
-    //         command = "";
-    //     }
-    // });
+
     term.on("data", function (evt) {
-        term.write(evt);
-        // ws.send(evt);
         ws.send(evt);
-        command += evt;
     });
+
+    function proposeGeometry(term) {
+        if (!term.element.parentElement) {
+            return null;
+        }
+        var parentElementStyle = window.getComputedStyle(term.element.parentElement);
+        var parentElementHeight = parseInt(parentElementStyle.getPropertyValue('height'));
+        var parentElementWidth = Math.max(0, parseInt(parentElementStyle.getPropertyValue('width')));
+        var elementStyle = window.getComputedStyle(term.element);
+        var elementPadding = {
+            top: parseInt(elementStyle.getPropertyValue('padding-top')),
+            bottom: parseInt(elementStyle.getPropertyValue('padding-bottom')),
+            right: parseInt(elementStyle.getPropertyValue('padding-right')),
+            left: parseInt(elementStyle.getPropertyValue('padding-left'))
+        };
+        var elementPaddingVer = elementPadding.top + elementPadding.bottom;
+        var elementPaddingHor = elementPadding.right + elementPadding.left;
+        var availableHeight = parentElementHeight - elementPaddingVer;
+        var availableWidth = parentElementWidth - elementPaddingHor - term._core.viewport.scrollBarWidth;
+        var geometry = {
+            cols: Math.floor(availableWidth / term._core._renderCoordinator.dimensions.actualCellWidth),
+            rows: Math.floor(availableHeight / term._core._renderCoordinator.dimensions.actualCellHeight)
+        };
+        return geometry;
+    }
+
+    function fit() {
+        var geometry = proposeGeometry(term);
+        if (geometry) {
+            if (term.rows !== geometry.rows || term.cols !== geometry.cols) {
+                term._core._renderCoordinator.clear();
+                term.resize(geometry.cols, geometry.rows);
+            }
+        }
+        ws.send(JSON.stringify({
+            Width: term.cols,
+            Height: term.rows
+        }));
+    }
+     fit();
 </script>
 </body>
 </html>

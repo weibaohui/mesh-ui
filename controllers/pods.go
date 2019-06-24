@@ -11,6 +11,5 @@ func (c *PodController) ContainerLog() {
 	c.TplName = "container_log.html"
 }
 func (c *PodController) ContainerExec() {
-	c.TplName = "xterm.html"
-	// c.TplName = "container_exec.html"
+	c.TplName = "container_exec.html"
 }
