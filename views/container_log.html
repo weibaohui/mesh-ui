@@ -6,27 +6,14 @@
     <script src="/static/js/xterm/xterm.js"></script>
     <style>
         .xterm-screen {
-            width: 1519px!important;
-            height: 800px!important;
+            height: 700px !important;
         }
     </style>
 </head>
 <body>
-<div id="terminal"  ></div>
+<div id="terminal"></div>
 </body>
-
 <script>
-    //获取QueryString的数组
-    function getQueryString() {
-        var result = location.search.match(new RegExp("[\?\&][^\?\&]+=[^\?\&]+", "g"));
-        if (result == null) {
-            return "";
-        }
-        for (var i = 0; i < result.length; i++) {
-            result[i] = result[i].substring(1);
-        }
-        return result;
-    }
 
     //根据QueryString参数名称获取值
     function getQueryStringByName(name) {
@@ -38,72 +25,39 @@
         return result[1];
     }
 
-    //根据QueryString参数索引获取值
-    function getQueryStringByIndex(index) {
-        if (index == null) {
-            return "";
-        }
-        var queryStringList = getQueryString();
-        if (index >= queryStringList.length) {
-            return "";
-        }
-        var result = queryStringList[index];
-        var startIndex = result.indexOf("=") + 1;
-        result = result.substring(startIndex);
-        return result;
 
-    }
-
-    var ns = getQueryStringByName("ns");
-    var podName = getQueryStringByName("podName");
-
-
+    var ws;
     var term = new Terminal({
         cursorBlink: true,
         useStyle: true,
         fontSize: 12,
     });
+
+    var ns = getQueryStringByName("ns");
+    var podName = getQueryStringByName("podName");
+    var containerName = getQueryStringByName("containerName");
+    var containerId = getQueryStringByName("containerId");
+    var path= "ws://{{.MeshServer}}/ns/" + ns + "/podName/" + podName + "/log?containerName=" + containerName
+
+    ws = new WebSocket(path);
+
+
     term.open(document.getElementById('terminal'));
+    ws.onopen = function (evt) {
+        fit();
+    }
+    ws.onclose = function (evt) {
+        term.writeln("CLOSE");
+        ws = null;
+    }
+    ws.onmessage = function (evt) {
+        term.writeln(evt.data);
+        term.focus();
+    }
+    ws.onerror = function (evt) {
+        term.writeln("ERROR: " + evt.data);
+    }
 
-
-    var output = document.getElementById("output");
-    var ws;
-    var print = function (message) {
-        var d = document.createElement("div");
-        d.innerHTML = message;
-        output.appendChild(d);
-        document.getElementById("msg_end").scrollIntoView();
-    };
-
-    function open() {
-
-        ws = new WebSocket("ws://localhost:9999/ns/" + ns + "/podName/" + podName + "/log");
-        ws.onopen = function (evt) {
-            term.writeln("connected");
-        }
-        ws.onclose = function (evt) {
-            term.writeln("CLOSE");
-            ws = null;
-        }
-        ws.onmessage = function (evt) {
-            term.writeln(evt.data);
-            term.focus();
-        }
-        ws.onerror = function (evt) {
-            term.writeln("ERROR: " + evt.data);
-        }
-
-    };
-
-    function close() {
-        if (!ws) {
-            return false;
-        }
-        ws.close();
-        return false;
-    };
-
-    open();
     function proposeGeometry(term) {
         if (!term.element.parentElement) {
             return null;
@@ -137,9 +91,22 @@
                 term.resize(geometry.cols, geometry.rows);
             }
         }
-
     }
-    fit();
+    function waitForConnection(callback, interval) {
+        if (ws.readyState === 1) {
+            callback();
+        } else {
+            var that = this;
+            // optional: implement backoff for interval here
+            setTimeout(function () {
+                waitForConnection(callback, interval);
+            }, interval);
+        }
+    };
+    waitForConnection(function () {
+        fit()
+    }, 1000);
+
 
 </script>
 </html>
