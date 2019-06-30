@@ -14,6 +14,7 @@
             <script type="text/html" id="bar">
                 <a class="layui-btn layui-btn-xs" lay-event="Inject">Inject</a>
             </script>
+
         </div>
     </div>
     {{ template "common/footer.html" .}}
@@ -44,11 +45,19 @@
         table.render({
             elem: '#table'
             , height: 'full-100'
-            , url: 'http://' + MeshServer + '/deploys' //数据接口
+            , url: 'http://' + MeshServer + '/deploys?ns=' + getUrlParam("ns")
             , page: false //开启分页
             , cols: [[ //表头
-                {field: 'namespace', title: 'namespace'},
-                {field: 'name', title: 'name'},
+                {
+                    title: 'namespace', templet: function (d) {
+                        return '<a href="/deploys?ns=' + d.namespace + '" class="layui-table-link" target="_self">' + d.namespace + ' </a>';
+                    }
+                },
+                {
+                    title: 'name', templet: function (d) {
+                        return '<a href="/pods?ns=' + d.namespace + '&appName=' + d.name + '" class="layui-table-link" target="_self">' + d.name + ' </a>';
+                    }
+                },
                 {field: 'ready', title: 'ready',},
                 {field: 'meshEnable', title: '服务网格'},
                 {title: '操作', toolbar: "#bar"}

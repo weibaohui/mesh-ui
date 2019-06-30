@@ -10,4 +10,11 @@
 <link rel="stylesheet" href="/static/js/layui/css/layui.css" media="all">
 <script>
     var MeshServer = "{{.MeshServer}}";
+
+    function getUrlParam(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) return unescape(r[2]);
+        return "";
+    }
 </script>
